@@ -19,6 +19,7 @@ from leica_roi_finder.core._defaults import(
     DEFAULT_MIN_CIRCULARITY,
     DEFAULT_MAX_CIRCULARITY
 )
+import leica_roi_finder
 
 # PyQt6 imports
 from PyQt6.QtWidgets import (
@@ -47,7 +48,7 @@ class main_window(QMainWindow):
         self.img = np.zeros((600, 600))
         self.roi_mask = np.zeros((600, 600))
 
-        self.window_title = "Leica ROI finder"
+        self.window_title = f"Leica ROI finder - Version: {leica_roi_finder.__version__}"
         self.setWindowTitle(self.window_title)
 
         # Variables
@@ -212,6 +213,10 @@ class main_window(QMainWindow):
         circularity_layout.addWidget(max_circularity_label, 1, 0)
         circularity_layout.addWidget(self.max_circularity_input, 1, 1)
 
+        # Detected ROIs label
+        self.detected_rois_label = QLabel()
+        self.detected_rois_label.setText(f'<b><span style="font-size:15px;">Detected ROIs: 0</span></b>')
+
         # Button to run the segmentation/roi selection
         run_button = QPushButton("Run ROI finder")
         run_button.clicked.connect(self.run)
@@ -226,6 +231,7 @@ class main_window(QMainWindow):
         sidebar_layout.addWidget(intensity_controls)
         sidebar_layout.addWidget(size_controls)
         sidebar_layout.addWidget(circularity_controls)
+        sidebar_layout.addWidget(self.detected_rois_label)
         sidebar_layout.addStretch(1)  # Push everything up
         sidebar_layout.addWidget(run_button)
         sidebar_layout.addWidget(export_button)
@@ -396,6 +402,7 @@ class main_window(QMainWindow):
         self.roi_mask = self.ROI_finder.mask
         self.mask_item.setImage(self.roi_mask.T)
         self.update_mask_opacity(self.opacity_slider.value())
+        self.detected_rois_label.setText(f'<b><span style="font-size:15px;">Detected ROIs: {len(np.unique(self.roi_mask))-1}</span></b>')
 
     def export(self):
         """
@@ -404,7 +411,7 @@ class main_window(QMainWindow):
         # Check if there are coords
         if not self.loaded_image:
             return
-        if len(self.ROI_finder.coords) < 1:
+        if len(np.unique(self.ROI_finder.mask))-1 < 1:
             msg_box = QMessageBox(self)
             msg_box.setWindowTitle("Error")
             msg_box.setText(f"No regions found")
@@ -425,7 +432,7 @@ class main_window(QMainWindow):
                 self.ROI_finder.export_to_rgn(filename, filename.stem)
                 msg_box = QMessageBox(self)
                 msg_box.setWindowTitle("Saved regions")
-                msg_box.setText(f"Regions succesfully saved at: {filename}")
+                msg_box.setText(f"Regions succesfully saved at:\n{filename}")
                 msg_box.setIcon(QMessageBox.Icon.Information)
                 msg_box.show()
             except Exception as error:

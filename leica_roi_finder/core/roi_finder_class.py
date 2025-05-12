@@ -3,8 +3,8 @@ from copy import deepcopy
 
 # External imports 
 import numpy as np
-from skimage import measure
-from skimage.measure import regionprops
+from skimage.measure import regionprops_table
+import pandas as pd
 
 # Package imports
 from leica_roi_finder.core.LIF_metadata import read_lif_metadata
@@ -223,7 +223,7 @@ class ROI_finder():
         # Load model if not done yet
         if self.model == None:
             # Lazy imports
-            print("Loading model...")
+            print("Loading cellpose...")
             from cellpose import models
             from torch.cuda import is_available
             if is_available():
@@ -232,6 +232,7 @@ class ROI_finder():
             else:
                 gpu=False
                 print("Using CPU...")
+            print("Loading model...")
             self.model = models.Cellpose(gpu=gpu, model_type='cyto3')
 
         # Run model
@@ -242,47 +243,38 @@ class ROI_finder():
         """
         Select regions of interest based on intensity, size and roundness
         """
-        # Make a copy of the mask to preserve the original segmentation
-        self.mask = deepcopy(self.segmented_mask)
+        self.mask = self.segmented_mask.copy()
 
-        # Loop over all cells from segmented mask
-        for cell in np.unique(self.segmented_mask[self.segmented_mask>0]):
-            cellmask = self.segmented_mask == cell
+        # Calculate builtin regionprops properties
+        props = regionprops_table(
+            self.segmented_mask, 
+            intensity_image=self.img,
+            properties=['label', 'area', 'perimeter', 'mean_intensity']
+        )
+        df = pd.DataFrame(props)
 
-            # Criteria 1: Min and max intensity
-            # Calculate mean intensity
-            cell_intensity = np.mean(self.img[cellmask])
-            # If intensity is too low or too high - remove it from the current mask
-            if (cell_intensity<self.min_intensity) or (cell_intensity>self.max_intensity):
-                self.mask[cellmask] = 0
+        # Calculate circularity
+        df['circularity'] = 4 * np.pi * df['area'] / (df['perimeter'] ** 2)
+        df['circularity'] = df['circularity'].fillna(0)
 
-            # Criteria 2: size
-            pixels = np.sum(cellmask)
-            if pixels > self.max_size or pixels < self.min_size:
-                self.mask[cellmask] = 0
+        # Filter using conditions
+        keep = df[
+            (df['mean_intensity'] >= self.min_intensity) &
+            (df['mean_intensity'] <= self.max_intensity) &
+            (df['area'] >= self.min_size) &
+            (df['area'] <= self.max_size) &
+            (df['circularity'] >= self.min_circularity) &
+            (df['circularity'] <= self.max_circularity)
+        ]['label'].values
 
-            # Criteria 3: roundness
-            labeled_mask = measure.label(cellmask)
-            region = regionprops(labeled_mask)[0]  # Directly get the first (only) region
-            
-            # Calculate circularity
-            area = region.area
-            perimeter_value = region.perimeter
-            # Value of 1 == perfect circle
-            circularity = 4 * np.pi * area / (perimeter_value ** 2) if perimeter_value > 0 else 0
-
-            if circularity > self.max_circularity or circularity < self.min_circularity:
-                self.mask[cellmask] = 0
-
-        # Find center of ROIs
-        self.coords = self._find_center()
+        # Remove masks
+        self.mask[~np.isin(self.segmented_mask, keep)] = 0
 
     def _find_center(self):
         """
         Find centers of selected ROIs
         """
-
-        temp_mask = deepcopy(self.mask)
+        temp_mask = self.mask.copy()
         if self.flipy:
             temp_mask = np.flipud(temp_mask)
         if self.flipx:
@@ -313,10 +305,13 @@ class ROI_finder():
         outputpath : str
             Filepath where to save the region file. Should have suffix ".rgn"
         groupname : str, optional
-            Group name to save the coordinates under
+            Group name inside the xml
         """
         xres = self.metadata["XRes"]  # Meters
         yres = self.metadata["YRes"]  # Meters
+        
+        # Find center of ROIs
+        self.coords = self._find_center()
 
         # Calculate stage coordinates relative to 0, 0 in image
         leica_coords = []

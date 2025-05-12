@@ -29,7 +29,8 @@ dependencies = [
     "lxml>=5.4.0",
     "pyqtgraph>=0.13.7",
     "superqt>=0.7.3",
-    "scikit-image>=0.25.2"
+    "scikit-image>=0.25.2",
+    "pandas>=2.2.3"
 ]
 
 [project.urls]
