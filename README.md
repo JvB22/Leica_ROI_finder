@@ -9,16 +9,16 @@ Automatic ROI finder for Leica Stellaris 8
 # Workflow
 Load LIF image into ROI finder:
 
-<img src="./assets/images/image_loaded.png" width="65%" height="50%">
+![](./assets/images/image_loaded.png)
 
 Perform segmentation using cellpose, filter ROIs using intensity, size and circularity:
 
-<img src="./assets/images/segmentation.png" width="65%" height="50%">
+![](./assets/images/segmentation.png)
 
 Export ROIs to Leica .rgn format and import into LAS X Navigator:
 
-<img src="./assets/images/regions_loaded.png" width="65%" height="50%">
+![](./assets/images/regions_loaded.png)
 
 Perform imaging on all regions:
 
-<img src="./assets/images/experiment.png" width="65%" height="50%">
+![](./assets/images/experiment.png)
