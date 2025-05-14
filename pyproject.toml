@@ -9,7 +9,7 @@ build-backend = "setuptools.build_meta"
 [project]
 
 name = "leica_roi_finder"
-version = "0.0.2"
+version = "0.0.3"
 description = "Automatic ROI detection using cellpose, exports to .rgn files"
 readme = "README.md"
 authors = [

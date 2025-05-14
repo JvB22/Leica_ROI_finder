@@ -189,7 +189,7 @@ class ROI_finder():
         metadata = read_lif_metadata(self._filepath)
 
         if metadata["MicroscopeModel"] != "DMI8-CS":
-            raise UserWarning(f"This script was created for the Leica Stellaris microscope, and has only been tested using the Leica Stellaris. Using this script on other machines might lead to unexpected outputs due to metadata differences")
+            raise UserWarning(f"This script was created for the Leica Stellaris 8 microscope, and has only been tested using the Leica Stellaris 8. Using this script on other machines might lead to unexpected outputs due to metadata differences")
 
         self.dtype =  getattr(np, f'uint{metadata["BitSize"]}')
 
@@ -325,7 +325,7 @@ class ROI_finder():
         self._posx = self._posx - (self.img.shape[1]/2)*xres
         self._posy = self._posy - (self.img.shape[0]/2)*yres
         
-        # Calculate absolute stage position and add to coordinates
+        # Retreive absolute stage position and add to coordinates
         leica_coords[:, 0] += self._posx
         leica_coords[:, 1] += self._posy
 
