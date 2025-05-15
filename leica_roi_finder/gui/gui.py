@@ -54,6 +54,7 @@ class main_window(QMainWindow):
         # Variables
         self.bit_depth = 16
         self.loaded_image = False
+        self.seed = 22
 
         self.init_ui()
 
@@ -161,57 +162,102 @@ class main_window(QMainWindow):
 
         """Intensity settings group"""
         intensity_controls = QGroupBox("Intensity")
-        intensity_layout = QGridLayout(intensity_controls)
+        intensity_layout = QVBoxLayout(intensity_controls)
 
-        # Min intensity input
-        min_intensity_label = QLabel("Min intensity:")
+        # Create slider for intensity
+        self.intensity_slider = QRangeSlider(Qt.Orientation.Horizontal)
+        self.intensity_slider.setMinimum(0)
+        self.intensity_slider.setMaximum(2**self.bit_depth)
+        self.intensity_slider.setValue((DEFAULT_MIN_INTENSITY, DEFAULT_MAX_INTENSITY))
+        self.intensity_slider.valueChanged.connect(self.update_intensity_inputs)
+        intensity_layout.addWidget(self.intensity_slider)
+        
+        # Create input fields below slider
+        intensity_inputs = QHBoxLayout()
+        
+        min_intensity_label = QLabel("Min:")
         self.min_intensity_input = QLineEdit()
         self.min_intensity_input.setText(str(DEFAULT_MIN_INTENSITY))
-        intensity_layout.addWidget(min_intensity_label, 0, 0)
-        intensity_layout.addWidget(self.min_intensity_input, 0, 1)
-
-        # Min intensity input
-        max_intensity_label = QLabel("Max intensity:")
+        self.min_intensity_input.textChanged.connect(self.update_intensity_slider_from_input)
+        
+        max_intensity_label = QLabel("Max:")
         self.max_intensity_input = QLineEdit()
         self.max_intensity_input.setText(str(DEFAULT_MAX_INTENSITY))
-        intensity_layout.addWidget(max_intensity_label, 1, 0)
-        intensity_layout.addWidget(self.max_intensity_input, 1, 1)
+        self.max_intensity_input.textChanged.connect(self.update_intensity_slider_from_input)
+        
+        intensity_inputs.addWidget(min_intensity_label)
+        intensity_inputs.addWidget(self.min_intensity_input)
+        intensity_inputs.addWidget(max_intensity_label)
+        intensity_inputs.addWidget(self.max_intensity_input)
+        
+        intensity_layout.addLayout(intensity_inputs)
 
         """Size settings group"""
         size_controls = QGroupBox("Size (pixels)")
-        size_layout = QGridLayout(size_controls)
-
-        # Min size input
-        min_size_label = QLabel("Min size:")
+        size_layout = QVBoxLayout(size_controls)
+        
+        # Create slider for size
+        self.size_slider = QRangeSlider(Qt.Orientation.Horizontal)
+        self.size_slider.setMinimum(0)
+        self.size_slider.setMaximum(2048**2)
+        self.size_slider.setValue((DEFAULT_MIN_SIZE, DEFAULT_MAX_SIZE))
+        self.size_slider.valueChanged.connect(self.update_size_inputs)
+        size_layout.addWidget(self.size_slider)
+        
+        # Create input fields below slider
+        size_inputs = QHBoxLayout()
+        
+        min_size_label = QLabel("Min:")
         self.min_size_input = QLineEdit()
         self.min_size_input.setText(str(DEFAULT_MIN_SIZE))
-        size_layout.addWidget(min_size_label, 0, 0)
-        size_layout.addWidget(self.min_size_input, 0, 1)
-
-        # Max size input
-        max_size_label = QLabel("Max size:")
+        self.min_size_input.textChanged.connect(self.update_size_slider_from_input)
+        
+        max_size_label = QLabel("Max:")
         self.max_size_input = QLineEdit()
         self.max_size_input.setText(str(DEFAULT_MAX_SIZE))
-        size_layout.addWidget(max_size_label, 1, 0)
-        size_layout.addWidget(self.max_size_input, 1, 1)
+        self.max_size_input.textChanged.connect(self.update_size_slider_from_input)
+        
+        size_inputs.addWidget(min_size_label)
+        size_inputs.addWidget(self.min_size_input)
+        size_inputs.addWidget(max_size_label)
+        size_inputs.addWidget(self.max_size_input)
+        
+        size_layout.addLayout(size_inputs)
 
         """Circularity settings group"""
         circularity_controls = QGroupBox("Circularity (0-1)")
-        circularity_layout = QGridLayout(circularity_controls)
+        circularity_layout = QVBoxLayout(circularity_controls)
 
-        # Min circularity input
-        min_circularity_label = QLabel("Min circularity:")
+        # Create slider for circularity        
+        self.circularity_slider = QRangeSlider(Qt.Orientation.Horizontal)
+        self.circularity_slider.setMinimum(0)
+        self.circularity_slider.setMaximum(100)
+        # Convert float values to int for slider
+        min_circ_val = int(DEFAULT_MIN_CIRCULARITY * 100)
+        max_circ_val = int(DEFAULT_MAX_CIRCULARITY * 100)
+        self.circularity_slider.setValue((min_circ_val, max_circ_val))
+        self.circularity_slider.valueChanged.connect(self.update_circularity_inputs)
+        circularity_layout.addWidget(self.circularity_slider)
+        
+        # Create input fields below slider
+        circularity_inputs = QHBoxLayout()
+        
+        min_circularity_label = QLabel("Min:")
         self.min_circularity_input = QLineEdit()
         self.min_circularity_input.setText(str(DEFAULT_MIN_CIRCULARITY))
-        circularity_layout.addWidget(min_circularity_label, 0, 0)
-        circularity_layout.addWidget(self.min_circularity_input, 0, 1)
-
-        # Max circularity input
-        max_circularity_label = QLabel("Max circularity:")
+        self.min_circularity_input.textChanged.connect(self.update_circularity_slider_from_input)
+        
+        max_circularity_label = QLabel("Max:")
         self.max_circularity_input = QLineEdit()
         self.max_circularity_input.setText(str(DEFAULT_MAX_CIRCULARITY))
-        circularity_layout.addWidget(max_circularity_label, 1, 0)
-        circularity_layout.addWidget(self.max_circularity_input, 1, 1)
+        self.max_circularity_input.textChanged.connect(self.update_circularity_slider_from_input)
+        
+        circularity_inputs.addWidget(min_circularity_label)
+        circularity_inputs.addWidget(self.min_circularity_input)
+        circularity_inputs.addWidget(max_circularity_label)
+        circularity_inputs.addWidget(self.max_circularity_input)
+        
+        circularity_layout.addLayout(circularity_inputs)
 
         # Detected ROIs label
         self.detected_rois_label = QLabel()
@@ -252,8 +298,79 @@ class main_window(QMainWindow):
         for lineedit in qlineedits:
             lineedit.returnPressed.connect(self.run)
 
-        
         return sidebar_widget
+    
+    # New methods for slider-input synchronization
+    def update_intensity_inputs(self, values):
+        """Update intensity input fields when slider changes"""
+        min_val, max_val = values
+        self.min_intensity_input.blockSignals(True)
+        self.max_intensity_input.blockSignals(True)
+        self.min_intensity_input.setText(str(min_val))
+        self.max_intensity_input.setText(str(max_val))
+        self.min_intensity_input.blockSignals(False)
+        self.max_intensity_input.blockSignals(False)
+        self.run()
+    
+    def update_intensity_slider_from_input(self):
+        """Update intensity slider when input fields change"""
+        try:
+            min_val = int(self.min_intensity_input.text())
+            max_val = int(self.max_intensity_input.text())
+            if min_val <= max_val:
+                self.intensity_slider.blockSignals(True)
+                self.intensity_slider.setValue((min_val, max_val))
+                self.intensity_slider.blockSignals(False)
+        except ValueError:
+            pass
+    
+    def update_size_inputs(self, values):
+        """Update size input fields when slider changes"""
+        min_val, max_val = values
+        self.min_size_input.blockSignals(True)
+        self.max_size_input.blockSignals(True)
+        self.min_size_input.setText(str(min_val))
+        self.max_size_input.setText(str(max_val))
+        self.min_size_input.blockSignals(False)
+        self.max_size_input.blockSignals(False)
+        self.run()
+    
+    def update_size_slider_from_input(self):
+        """Update size slider when input fields change"""
+        try:
+            min_val = int(self.min_size_input.text())
+            max_val = int(self.max_size_input.text())
+            if min_val <= max_val:
+                self.size_slider.blockSignals(True)
+                self.size_slider.setValue((min_val, max_val))
+                self.size_slider.blockSignals(False)
+        except ValueError:
+            pass
+    
+    def update_circularity_inputs(self, values):
+        """Update circularity input fields when slider changes"""
+        min_val, max_val = values
+        self.min_circularity_input.blockSignals(True)
+        self.max_circularity_input.blockSignals(True)
+        # Convert int slider values back to float (0-1)
+        self.min_circularity_input.setText(f"{min_val/100:.2f}")
+        self.max_circularity_input.setText(f"{max_val/100:.2f}")
+        self.min_circularity_input.blockSignals(False)
+        self.max_circularity_input.blockSignals(False)
+        self.run()
+    
+    def update_circularity_slider_from_input(self):
+        """Update circularity slider when input fields change"""
+        try:
+            min_val = float(self.min_circularity_input.text())
+            max_val = float(self.max_circularity_input.text())
+            if 0 <= min_val <= max_val <= 1:
+                self.circularity_slider.blockSignals(True)
+                # Convert float values to int for slider (0-100)
+                self.circularity_slider.setValue((int(min_val*100), int(max_val*100)))
+                self.circularity_slider.blockSignals(False)
+        except ValueError:
+            pass
     
     def create_image_display(self):
         """
@@ -342,7 +459,7 @@ class main_window(QMainWindow):
                 self.bit_depth = int(self.ROI_finder.metadata["BitSize"])
 
                 # Mask colormap
-                rng = np.random.default_rng()
+                rng = np.random.default_rng(seed=self.seed)
                 lut = rng.integers(0, 256, size=(2**self.bit_depth, 3), dtype=np.uint8)
                 
                 alpha = np.full((2**self.bit_depth, 1), 255, dtype=np.uint8)
@@ -351,13 +468,30 @@ class main_window(QMainWindow):
                 rgba_lut = np.hstack((lut, alpha))
                 self.mask_item.setLookupTable(rgba_lut)
 
+                # Update image min/max slider
                 self.image_slider.setMinimum(int(np.min(self.img)))
                 self.image_slider.setMaximum(int(np.max(self.img)))
                 self.image_slider.setValue((int(np.min(self.img)), int(np.max(self.img))))
 
-                self.max_intensity_input.setText(str(2**self.bit_depth))
+                # Update intensity slider range based on image bit depth
+                self.intensity_slider.blockSignals(True)
+                self.max_intensity_input.blockSignals(True)
+                max_intensity = 2**self.bit_depth - 1
+                self.intensity_slider.setMaximum(max_intensity)
+                self.intensity_slider.setValue((0, max_intensity))
+                self.max_intensity_input.setText(str(max_intensity))
+                self.intensity_slider.blockSignals(False)
+                self.max_intensity_input.blockSignals(False)
 
-                self.max_size_input.setText(str(self.img.shape[0]*self.img.shape[1]))
+                # Update size slider range based on image dimensions
+                self.size_slider.blockSignals(True)
+                self.max_size_input.blockSignals(True)
+                max_size = self.img.shape[0] * self.img.shape[1]
+                self.size_slider.setMaximum(max_size)
+                self.size_slider.setValue((DEFAULT_MIN_SIZE, max_size))
+                self.max_size_input.setText(str(max_size))
+                self.size_slider.blockSignals(False)
+                self.max_size_input.blockSignals(False)
 
                 self.update_display()
                 file_path = Path(file_path)
@@ -403,6 +537,14 @@ class main_window(QMainWindow):
         self.mask_item.setImage(self.roi_mask.T)
         self.update_mask_opacity(self.opacity_slider.value())
         self.detected_rois_label.setText(f'<b><span style="font-size:15px;">Detected ROIs: {len(np.unique(self.roi_mask))-1}</span></b>')
+
+        # Edit max slider values based on properties
+        properties = self.ROI_finder.properties
+        max_size = properties["area"].max()
+        self.size_slider.setMaximum(max_size*1.1)
+
+        max_intensity = properties["mean_intensity"].max()
+        self.intensity_slider.setMaximum(max_intensity*1.1)
 
     def export(self):
         """

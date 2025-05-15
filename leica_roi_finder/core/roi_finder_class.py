@@ -133,6 +133,7 @@ class ROI_finder():
         self.segmented_mask = np.zeros_like(self.img)
         self.mask = np.zeros_like(self.img)
         self.coords = []
+        self.properties = None
 
     def run(self):
         """
@@ -153,6 +154,8 @@ class ROI_finder():
         ):
             # Run cellpose
             self._cellpose()
+            # Also recalculate properties now
+            self._calculate_properties()
             run_select_roi=True # Now also rerun ROI selection
 
         # Sort cells base on other criteria
@@ -239,32 +242,33 @@ class ROI_finder():
         self.mask, flow, styles, diams = self.model.eval(self.img, diameter=self.diameter, flow_threshold=self.flow_threshold, cellprob_threshold=self.cellprob_threshold)
         self.segmented_mask = deepcopy(self.mask)
 
-    def _select_roi(self):
-        """
-        Select regions of interest based on intensity, size and roundness
-        """
-        self.mask = self.segmented_mask.copy()
-
+    def _calculate_properties(self):
         # Calculate builtin regionprops properties
         props = regionprops_table(
             self.segmented_mask, 
             intensity_image=self.img,
             properties=['label', 'area', 'perimeter', 'mean_intensity']
         )
-        df = pd.DataFrame(props)
+        self.properties = pd.DataFrame(props)
 
         # Calculate circularity
-        df['circularity'] = 4 * np.pi * df['area'] / (df['perimeter'] ** 2)
-        df['circularity'] = df['circularity'].fillna(0)
+        self.properties['circularity'] = 4 * np.pi * self.properties['area'] / (self.properties['perimeter'] ** 2)
+        self.properties['circularity'] = self.properties['circularity'].fillna(0)
+
+    def _select_roi(self):
+        """
+        Select regions of interest based on intensity, size and roundness
+        """
+        self.mask = self.segmented_mask.copy()
 
         # Filter using conditions
-        keep = df[
-            (df['mean_intensity'] >= self.min_intensity) &
-            (df['mean_intensity'] <= self.max_intensity) &
-            (df['area'] >= self.min_size) &
-            (df['area'] <= self.max_size) &
-            (df['circularity'] >= self.min_circularity) &
-            (df['circularity'] <= self.max_circularity)
+        keep = self.properties[
+            (self.properties['mean_intensity'] >= self.min_intensity) &
+            (self.properties['mean_intensity'] <= self.max_intensity) &
+            (self.properties['area'] >= self.min_size) &
+            (self.properties['area'] <= self.max_size) &
+            (self.properties['circularity'] >= self.min_circularity) &
+            (self.properties['circularity'] <= self.max_circularity)
         ]['label'].values
 
         # Remove masks

@@ -6,6 +6,12 @@ Automatic ROI finder for Leica Stellaris 8
 
 ![](./assets/images/leica_roi_finder.png)
 
+## Installation
+Leica ROI finder is available on PyPi and can be installed as follows:
+```shell
+pip install leica-roi-finder
+```
+
 # Workflow
 Load LIF image into ROI finder:
 
