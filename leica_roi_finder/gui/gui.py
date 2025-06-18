@@ -2,6 +2,7 @@
 import sys
 import traceback
 from pathlib import Path
+import json
 
 # External imports
 import numpy as np
@@ -26,11 +27,10 @@ from PyQt6.QtWidgets import (
     QApplication, QMainWindow, QWidget,
     QPushButton, QLabel, QLineEdit, QGroupBox,
     QFileDialog, QGridLayout, QMessageBox,
-    QHBoxLayout, QVBoxLayout, QLabel,
-    QSlider, QPushButton, QGroupBox
-    )
+    QHBoxLayout, QVBoxLayout, QSlider
+)
 
-from PyQt6.QtCore import pyqtSlot, Qt
+from PyQt6.QtCore import Qt
 from PyQt6.QtGui import QAction, QPalette, QColor
 
 # Other QT imports
@@ -55,6 +55,7 @@ class main_window(QMainWindow):
         self.bit_depth = 16
         self.loaded_image = False
         self.seed = 22
+        self.thread = None
 
         self.init_ui()
 
@@ -259,6 +260,14 @@ class main_window(QMainWindow):
         
         circularity_layout.addLayout(circularity_inputs)
 
+        # Save config button
+        save_button = QPushButton("Save configuration")
+        save_button.clicked.connect(self.save_config)
+
+        # Load config button
+        load_button = QPushButton("Load configuration")
+        load_button.clicked.connect(self.load_config)
+
         # Detected ROIs label
         self.detected_rois_label = QLabel()
         self.detected_rois_label.setText(f'<b><span style="font-size:15px;">Detected ROIs: 0</span></b>')
@@ -277,6 +286,8 @@ class main_window(QMainWindow):
         sidebar_layout.addWidget(intensity_controls)
         sidebar_layout.addWidget(size_controls)
         sidebar_layout.addWidget(circularity_controls)
+        sidebar_layout.addWidget(save_button)
+        sidebar_layout.addWidget(load_button)
         sidebar_layout.addWidget(self.detected_rois_label)
         sidebar_layout.addStretch(1)  # Push everything up
         sidebar_layout.addWidget(run_button)
@@ -299,7 +310,89 @@ class main_window(QMainWindow):
             lineedit.returnPressed.connect(self.run)
 
         return sidebar_widget
-    
+
+    # Save settings
+    def save_config(self):
+        config = {}
+        try:
+            # Collect values and add to dict
+            config['diameter'] = int(self.diameter_input.text())
+            config['flow_threshold'] = float(self.flow_input.text())
+            config['cellprob_threshold'] = float(self.cellprob_input.text())
+            config['min_intensity'] = int(self.min_intensity_input.text())
+            config['max_intensity'] = int(self.max_intensity_input.text())
+            config['min_size'] = int(self.min_size_input.text())
+            config['max_size'] = int(self.max_size_input.text())
+            config['min_circularity'] = float(self.min_circularity_input.text())
+            config['max_circularity'] = float(self.max_circularity_input.text())
+        except Exception as error:
+            msg_box = QMessageBox(self)
+            msg_box.setWindowTitle("Error")
+            msg_box.setText(f"Could not convert all inputs to the correct datatype:\n{error}")
+            msg_box.setIcon(QMessageBox.Icon.Critical)
+            msg_box.show()
+            return
+        
+        file_filter = "JSON files (*.json)"
+        filename, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save File As",
+            "configuration.json",
+            file_filter
+        )
+
+        if filename:
+            try:
+                with open(filename, "w") as file:
+                    json.dump(config, file, indent=4)
+                msg_box = QMessageBox(self)
+                msg_box.setWindowTitle("Saved configuration")
+                msg_box.setText(f"Configuration successfully saved at:\n{filename}")
+                msg_box.setIcon(QMessageBox.Icon.Information)
+                msg_box.show()
+            except Exception as error:
+                traceback.print_exc()
+                msg_box = QMessageBox(self)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"Could not save configuration:\n{error}")
+                msg_box.setIcon(QMessageBox.Icon.Critical)
+                msg_box.show()
+
+
+    # Load settings
+    def load_config(self):
+        filename, _ = QFileDialog.getOpenFileName(
+            self,
+            "Open configuration",
+            "",
+            "JSON files (*.json)"
+        )
+
+        if filename:
+            try:
+                with open(filename, 'r') as file:
+                    config = json.load(file)
+
+                # Set values
+                self.diameter_input.setText(str(config['diameter']))
+                self.flow_input.setText(str(config['flow_threshold']))
+                self.cellprob_input.setText(str(config['cellprob_threshold']))
+                self.min_intensity_input.setText(str(config['min_intensity']))
+                self.max_intensity_input.setText(str(config['max_intensity']))
+                self.min_size_input.setText(str(config['min_size']))
+                self.max_size_input.setText(str(config['max_size']))
+                self.min_circularity_input.setText(str(config['min_circularity']))
+                self.max_circularity_input.setText(str(config['max_circularity']))
+            except Exception as error:
+                traceback.print_exc()
+                msg_box = QMessageBox(self)
+                msg_box.setWindowTitle("Error")
+                msg_box.setText(f"Could not load configuration:\n{error}")
+                msg_box.setIcon(QMessageBox.Icon.Critical)
+                msg_box.show()
+            self.run()
+        
+
     # New methods for slider-input synchronization
     def update_intensity_inputs(self, values):
         """Update intensity input fields when slider changes"""
@@ -499,7 +592,7 @@ class main_window(QMainWindow):
                 self.loaded_image = True
 
             except Exception as e:
-                QMessageBox.critical(self, "Error", f"Failed to load image: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to load image:\n{str(e)}")
                 traceback.print_exc()
 
     def run(self):
@@ -528,10 +621,10 @@ class main_window(QMainWindow):
             msg_box.setIcon(QMessageBox.Icon.Critical)
             msg_box.show()
             return
-
+        
         # Run detection
         self.ROI_finder.run()
-
+   
         # Update image
         self.roi_mask = self.ROI_finder.mask
         self.mask_item.setImage(self.roi_mask.T)
@@ -574,7 +667,7 @@ class main_window(QMainWindow):
                 self.ROI_finder.export_to_rgn(filename, filename.stem)
                 msg_box = QMessageBox(self)
                 msg_box.setWindowTitle("Saved regions")
-                msg_box.setText(f"Regions succesfully saved at:\n{filename}")
+                msg_box.setText(f"Regions successfully saved at:\n{filename}")
                 msg_box.setIcon(QMessageBox.Icon.Information)
                 msg_box.show()
             except Exception as error:

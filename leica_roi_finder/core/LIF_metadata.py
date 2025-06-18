@@ -1,7 +1,84 @@
 import struct
 from lxml import etree
+from typing import Tuple
 
-def read_lif_metadata(file_path):
+def extract_lif_metadata(file_path: str) -> Tuple[str, int]:
+    """
+    Extracts XML metadata and a data offset from a LIF file
+
+    Parameters
+    ----------
+    file_path : str
+        Path to the LIF file.
+
+    Returns
+    -------
+    xml_string : str
+        XML metadata.
+    data_offset : int
+        The file offset
+    """
+
+    MAGIC_NUMBER_1 = 112
+    MAGIC_NUMBER_2 = 42 # Block continuation marker
+
+    # Extract XML element
+    with open(file_path, 'rb') as f:
+        header_val_1 = struct.unpack('<i', f.read(4))[0]
+        if header_val_1 != MAGIC_NUMBER_1:
+            raise ValueError(f'Invalid LIF file: {file_path}')
+
+        f.read(4)
+
+        header_val_2 = struct.unpack('<B', f.read(1))[0]
+        if header_val_2 != MAGIC_NUMBER_2:
+            raise ValueError(f'Invalid LIF file: {file_path}')
+
+        xml_char_count = struct.unpack('<i', f.read(4))[0]
+
+        xml_byte_length = xml_char_count * 2
+        xml_bytes_utf16 = f.read(xml_byte_length)
+        xml_description = xml_bytes_utf16.decode('utf-16')
+
+        # Process memory blocks to find data offset
+        data_offset = f.tell()
+
+        while True:
+            start_of_current_block_attempt = f.tell()
+
+            block_prefix_bytes = f.read(17)
+            if len(block_prefix_bytes) < 17:
+                break 
+            
+            continuation_byte_data = f.read(1)
+            if not continuation_byte_data:
+                break
+            
+            continuation_byte = struct.unpack('<B', continuation_byte_data)[0]
+
+            if continuation_byte != MAGIC_NUMBER_2:
+                data_offset = start_of_current_block_attempt
+                break
+
+            block_id_len_bytes = f.read(4)
+            if len(block_id_len_bytes) < 4:
+                data_offset = start_of_current_block_attempt
+                break
+            
+            block_id_char_count = struct.unpack('<i', block_id_len_bytes)[0]
+            block_id_data_byte_length = block_id_char_count * 2
+            block_id_data = f.read(block_id_data_byte_length)
+            
+            if len(block_id_data) < block_id_data_byte_length:
+                data_offset = start_of_current_block_attempt
+                break
+            
+            data_offset = f.tell()
+
+    return xml_description, data_offset
+
+
+def read_lif_metadata(file_path : str) -> dict:
     """
     Read metadata from a Leica LIF file
 
@@ -20,7 +97,7 @@ def read_lif_metadata(file_path):
     This function returns the following metadata that is required for the Leica ROI finder:
     - FlipX
     - FlipY
-    - SwampXY
+    - SwapXY
     - BitSize
     - MicroscopeModel
     - Offset
@@ -35,37 +112,8 @@ def read_lif_metadata(file_path):
     Certain values might not have the same name in other microscope metadata
     """
 
-    with open(file_path, 'rb') as f:
-        # Basic LIF validation
-        testvalue = struct.unpack('i', f.read(4))[0]
-        if testvalue != 112:
-            raise ValueError(f'Error Opening LIF-File: {file_path}')
-        _ = struct.unpack('i', f.read(4))[0]
-        testvalue = struct.unpack('B', f.read(1))[0]
-        if testvalue != 42:
-            raise ValueError(f'Error Opening LIF-File: {file_path}')
-        testvalue = struct.unpack('i', f.read(4))[0]
-        
-        # Retrieve XML
-        XMLObjDescriptionUTF16 = f.read(testvalue * 2)
-        XMLObjDescription = XMLObjDescriptionUTF16.decode('utf-16')
-
-        # Retrieve offset for memory map
-        while True:
-            data = f.read(4)
-            testvalue = struct.unpack('i', data)[0]
-            _ = struct.unpack('i', f.read(4))[0]
-            testvalue = struct.unpack('B', f.read(1))[0]
-            MemorySize = struct.unpack('q', f.read(8))[0]
-            testvalue = struct.unpack('B', f.read(1))[0]
-            if testvalue != 42:
-                break
-            testvalue = struct.unpack('i', f.read(4))[0]
-            BlockIDLength = testvalue
-            BlockIDData = f.read(BlockIDLength * 2)
-            position = f.tell()
-
-    root = etree.fromstring(XMLObjDescription)
+    xml_description, position = extract_lif_metadata(file_path)
+    root = etree.fromstring(xml_description)
 
     # Retrieve confocalsettings
     atl_element = root.find('.//ATLConfocalSettingDefinition')

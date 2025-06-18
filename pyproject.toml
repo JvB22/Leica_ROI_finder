@@ -41,9 +41,3 @@ package-dir = {"" = "."}
 
 [tool.setuptools.packages.find]
 where = ["."]
-
-[tool.setuptools.package-data]
-numbers_and_brightness = []
-
-[project.scripts]
-numbers_and_brightness = "numbers_and_brightness.__main__:main"

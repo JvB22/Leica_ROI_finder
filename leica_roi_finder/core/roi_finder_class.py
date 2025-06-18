@@ -65,18 +65,18 @@ class ROI_finder():
 
     def __init__(
             self,
-            filepath,
-            diameter = DEFAULT_DIAMETER,
-            flow_threshold = DEFAULT_FLOW_THRESHOLD,
-            cellprob_threshold = DEFAULT_CELLPROB_THRESHOLD,
-            min_intensity = DEFAULT_MIN_INTENSITY,
-            max_intensity = DEFAULT_MAX_INTENSITY,
-            min_size = DEFAULT_MIN_SIZE,
-            max_size = DEFAULT_MAX_SIZE,
-            min_circularity = DEFAULT_MIN_CIRCULARITY,
-            max_circularity = DEFAULT_MAX_CIRCULARITY
+            filepath: str,
+            diameter: int = DEFAULT_DIAMETER,
+            flow_threshold: float = DEFAULT_FLOW_THRESHOLD,
+            cellprob_threshold: float = DEFAULT_CELLPROB_THRESHOLD,
+            min_intensity: int = DEFAULT_MIN_INTENSITY,
+            max_intensity: int = DEFAULT_MAX_INTENSITY,
+            min_size: int = DEFAULT_MIN_SIZE,
+            max_size: int = DEFAULT_MAX_SIZE,
+            min_circularity: float = DEFAULT_MIN_CIRCULARITY,
+            max_circularity: float = DEFAULT_MAX_CIRCULARITY
         ):
-        """"
+        """
         Parameters
         ----------
         filepath : str
@@ -141,7 +141,7 @@ class ROI_finder():
 
         Notes
         -----
-        If parameters for cellpose segmentation have not changed, the segmentation will not be run again to save time.
+        The segmentation will not run if parameters for cellpose have not changed to save time.
         """
 
         run_select_roi=False
